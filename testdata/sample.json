@@ -1,0 +1,36 @@
+{
+  "cwd": "/Users/you/code/myproject",
+  "session_id": "abc123",
+  "transcript_path": "/path/to/transcript.jsonl",
+  "model": {
+    "id": "claude-sonnet-4-6",
+    "display_name": "Sonnet 4.6"
+  },
+  "workspace": {
+    "current_dir": "/Users/you/code/myproject",
+    "project_dir": "/Users/you/code/myproject"
+  },
+  "version": "1.4.2",
+  "output_style": { "name": "standard" },
+  "cost": {
+    "total_cost_usd": 0.42,
+    "total_duration_ms": 180000,
+    "total_api_duration_ms": 142000,
+    "total_lines_added": 312,
+    "total_lines_removed": 87
+  },
+  "context_window": {
+    "total_input_tokens": 48200,
+    "total_output_tokens": 12400,
+    "context_window_size": 200000,
+    "used_percentage": 30.3,
+    "remaining_percentage": 69.7,
+    "current_usage": {
+      "input_tokens": 8000,
+      "output_tokens": 2000,
+      "cache_creation_input_tokens": 500,
+      "cache_read_input_tokens": 200
+    }
+  },
+  "exceeds_200k_tokens": false
+}

@@ -129,6 +129,23 @@ pub fn tokens(count: u64) void {
     }
 }
 
+fn format_time_into(buf_out: []u8, ms: u64) ![]u8 {
+    if (ms < 1200) {
+        return std.fmt.bufPrint(buf_out, "{d}ms", .{ms});
+    } else if (ms < 10_000) {
+        const seconds = @as(f64, @floatFromInt(ms)) / 1000.0;
+        return std.fmt.bufPrint(buf_out, "{d:.1}s", .{seconds});
+    } else if (ms < 60_000) {
+        const seconds = ms / 1000;
+        return std.fmt.bufPrint(buf_out, "{d}s", .{seconds});
+    } else {
+        const total_seconds = ms / 1000;
+        const minutes = total_seconds / 60;
+        const seconds = total_seconds % 60;
+        return std.fmt.bufPrint(buf_out, "{d}m {d}s", .{ minutes, seconds });
+    }
+}
+
 /// Formats and appends a time duration to the buffer
 /// < 1200ms: prints as milliseconds (e.g., "1150ms")
 /// 1200ms-10s: prints as seconds with 1 decimal (e.g., "5.2s")
@@ -136,39 +153,20 @@ pub fn tokens(count: u64) void {
 /// >= 60s: prints as minutes and seconds (e.g., "1m 30s")
 pub fn time(ms: u64) void {
     if (overflow) return;
-
     var temp_buf: [32]u8 = undefined;
+    const formatted = format_time_into(&temp_buf, ms) catch {
+        overflow = true;
+        return;
+    };
+    string(formatted);
+}
 
-    if (ms < 1200) {
-        const formatted = std.fmt.bufPrint(&temp_buf, "{d}ms", .{ms}) catch {
-            overflow = true;
-            return;
-        };
-        string(formatted);
-    } else if (ms < 10_000) {
-        const seconds = @as(f64, @floatFromInt(ms)) / 1000.0;
-        const formatted = std.fmt.bufPrint(&temp_buf, "{d:.1}s", .{seconds}) catch {
-            overflow = true;
-            return;
-        };
-        string(formatted);
-    } else if (ms < 60_000) {
-        const seconds = ms / 1000;
-        const formatted = std.fmt.bufPrint(&temp_buf, "{d}s", .{seconds}) catch {
-            overflow = true;
-            return;
-        };
-        string(formatted);
-    } else {
-        const total_seconds = ms / 1000;
-        const minutes = total_seconds / 60;
-        const seconds = total_seconds % 60;
-        const formatted = std.fmt.bufPrint(&temp_buf, "{d}m {d}s", .{ minutes, seconds }) catch {
-            overflow = true;
-            return;
-        };
-        string(formatted);
-    }
+/// Returns the number of bytes that `time(ms)` would emit, without emitting anything.
+/// Intended for pre-computing column positions when aligning content across lines.
+pub fn time_len(ms: u64) usize {
+    var temp_buf: [32]u8 = undefined;
+    const formatted = format_time_into(&temp_buf, ms) catch return 0;
+    return formatted.len;
 }
 
 /// Formats and appends a cost/money amount to the buffer

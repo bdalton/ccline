@@ -31,7 +31,8 @@ fn status_line(msg: *const message.Message) !void {
     const pill2 = "#333311";
 
     const ctx_progress_size = 50;
-    const ctx_progress = try calculate_progress_units(msg.context_window.used_percentage, ctx_progress_size);
+    const used_pct = msg.context_window.used_percentage orelse 0.0;
+    const ctx_progress = try calculate_progress_units(used_pct, ctx_progress_size);
 
     try buf.style_fg(pill0);
     buf.string("  \u{e0b6}");

@@ -133,6 +133,16 @@ pub fn tokens_padded(count: u64, width: usize) void {
     string(formatted);
 }
 
+/// Returns the number of bytes that `tokens(count)` would emit, without
+/// emitting anything. Byte length equals column width because
+/// `format_tokens_into` only produces ASCII. Intended for pre-computing
+/// column positions when aligning content across lines.
+pub fn tokens_len(count: u64) usize {
+    var temp_buf: [32]u8 = undefined;
+    const formatted = format_tokens_into(&temp_buf, count) catch return 0;
+    return formatted.len;
+}
+
 fn format_time_into(buf_out: []u8, ms: u64) ![]u8 {
     if (ms < 1200) {
         return std.fmt.bufPrint(buf_out, "{d}ms", .{ms});
@@ -441,6 +451,17 @@ test "tokens_padded emits as-is when value exceeds width" {
     // 1_200_000 → "1.20M" (5 bytes). Width 3 is narrower; we emit as-is.
     tokens_padded(1_200_000, 3);
     try std.testing.expectEqualStrings("1.20M", buf[0..len]);
+}
+
+test "tokens_len matches tokens emission length" {
+    try std.testing.expectEqual(@as(usize, 1), tokens_len(0));
+    try std.testing.expectEqual(@as(usize, 4), tokens_len(1999));
+    try std.testing.expectEqual(@as(usize, 4), tokens_len(2000)); // "2.0K"
+    try std.testing.expectEqual(@as(usize, 6), tokens_len(130_000)); // "130.0K"
+    try std.testing.expectEqual(@as(usize, 7), tokens_len(1_000_000)); // "1000.0K"
+    try std.testing.expectEqual(@as(usize, 5), tokens_len(1_200_000)); // "1.20M"
+    try std.testing.expectEqual(@as(usize, 5), tokens_len(99_999_999)); // "100.0M"
+    try std.testing.expectEqual(@as(usize, 4), tokens_len(100_000_000)); // "100M"
 }
 
 test "time formats milliseconds (<1200ms)" {

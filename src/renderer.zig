@@ -81,6 +81,24 @@ pub fn repeat(c: u21, n: usize) void {
     }
 }
 
+fn format_tokens_into(buf_out: []u8, count: u64) ![]u8 {
+    if (count < 2000) {
+        return std.fmt.bufPrint(buf_out, "{d}", .{count});
+    } else if (count < 1_200_000) {
+        const thousands = @as(f64, @floatFromInt(count)) / 1000.0;
+        return std.fmt.bufPrint(buf_out, "{d:.1}K", .{thousands});
+    } else if (count < 10_000_000) {
+        const millions = @as(f64, @floatFromInt(count)) / 1_000_000.0;
+        return std.fmt.bufPrint(buf_out, "{d:.2}M", .{millions});
+    } else if (count < 100_000_000) {
+        const millions = @as(f64, @floatFromInt(count)) / 1_000_000.0;
+        return std.fmt.bufPrint(buf_out, "{d:.1}M", .{millions});
+    } else {
+        const millions = @as(f64, @floatFromInt(count)) / 1_000_000.0;
+        return std.fmt.bufPrint(buf_out, "{d:.0}M", .{millions});
+    }
+}
+
 /// Formats and appends a token count to the buffer
 /// < 2000: prints as-is (e.g., "1234")
 /// 2000-1.2M: prints in thousands with 1 decimal (e.g., "12.5K")
@@ -89,44 +107,30 @@ pub fn repeat(c: u21, n: usize) void {
 /// >= 100M: prints in millions with 0 decimals (e.g., "123M")
 pub fn tokens(count: u64) void {
     if (overflow) return;
-
     var temp_buf: [32]u8 = undefined;
+    const formatted = format_tokens_into(&temp_buf, count) catch {
+        overflow = true;
+        return;
+    };
+    string(formatted);
+}
 
-    if (count < 2000) {
-        const formatted = std.fmt.bufPrint(&temp_buf, "{d}", .{count}) catch {
-            overflow = true;
-            return;
-        };
-        string(formatted);
-    } else if (count < 1_200_000) {
-        const thousands = @as(f64, @floatFromInt(count)) / 1000.0;
-        const formatted = std.fmt.bufPrint(&temp_buf, "{d:.1}K", .{thousands}) catch {
-            overflow = true;
-            return;
-        };
-        string(formatted);
-    } else if (count < 10_000_000) {
-        const millions = @as(f64, @floatFromInt(count)) / 1_000_000.0;
-        const formatted = std.fmt.bufPrint(&temp_buf, "{d:.2}M", .{millions}) catch {
-            overflow = true;
-            return;
-        };
-        string(formatted);
-    } else if (count < 100_000_000) {
-        const millions = @as(f64, @floatFromInt(count)) / 1_000_000.0;
-        const formatted = std.fmt.bufPrint(&temp_buf, "{d:.1}M", .{millions}) catch {
-            overflow = true;
-            return;
-        };
-        string(formatted);
-    } else {
-        const millions = @as(f64, @floatFromInt(count)) / 1_000_000.0;
-        const formatted = std.fmt.bufPrint(&temp_buf, "{d:.0}M", .{millions}) catch {
-            overflow = true;
-            return;
-        };
-        string(formatted);
+/// Right-aligns `tokens(count)` into a field of `width` bytes, emitting
+/// leading ASCII spaces as needed. If the formatted value is already >=
+/// `width` bytes, no padding is added (the value is emitted as-is and will
+/// overflow the intended column). Uses byte length, which equals column
+/// width for the ASCII-only output of `format_tokens_into`.
+pub fn tokens_padded(count: u64, width: usize) void {
+    if (overflow) return;
+    var temp_buf: [32]u8 = undefined;
+    const formatted = format_tokens_into(&temp_buf, count) catch {
+        overflow = true;
+        return;
+    };
+    if (formatted.len < width) {
+        repeat(' ', width - formatted.len);
     }
+    string(formatted);
 }
 
 fn format_time_into(buf_out: []u8, ms: u64) ![]u8 {
@@ -399,6 +403,44 @@ test "tokens formats millions with 0 decimals (>=100M)" {
     len = 0;
     tokens(1_000_000_000);
     try std.testing.expectEqualStrings("1000M", buf[0..len]);
+}
+
+test "tokens_padded right-aligns with leading spaces" {
+    len = 0;
+    overflow = false;
+
+    tokens_padded(0, 5);
+    try std.testing.expectEqualStrings("    0", buf[0..len]);
+
+    len = 0;
+    tokens_padded(42, 5);
+    try std.testing.expectEqualStrings("   42", buf[0..len]);
+
+    len = 0;
+    tokens_padded(19_400, 5);
+    try std.testing.expectEqualStrings("19.4K", buf[0..len]);
+
+    // Percent-style usage: pad to 3 so `tokens_padded(n, 3) + "%"` is 4 chars.
+    len = 0;
+    tokens_padded(0, 3);
+    try std.testing.expectEqualStrings("  0", buf[0..len]);
+
+    len = 0;
+    tokens_padded(43, 3);
+    try std.testing.expectEqualStrings(" 43", buf[0..len]);
+
+    len = 0;
+    tokens_padded(100, 3);
+    try std.testing.expectEqualStrings("100", buf[0..len]);
+}
+
+test "tokens_padded emits as-is when value exceeds width" {
+    len = 0;
+    overflow = false;
+
+    // 1_200_000 → "1.20M" (5 bytes). Width 3 is narrower; we emit as-is.
+    tokens_padded(1_200_000, 3);
+    try std.testing.expectEqualStrings("1.20M", buf[0..len]);
 }
 
 test "time formats milliseconds (<1200ms)" {

@@ -44,7 +44,7 @@ fn status_line(msg: *const message.Message) !void {
     try buf.progress_bar(ctx_progress, ctx_progress_size);
     try buf.style_fg("#3a2e1f");
     buf.char(' ');
-    buf.tokens(msg.estimate_used_tokens());
+    buf.tokens_padded(msg.estimate_used_tokens(), 7);
     buf.char(' ');
     try buf.style(pill0, pill1);
     buf.char('\u{e0bc}');
@@ -94,7 +94,7 @@ fn status_line(msg: *const message.Message) !void {
         try buf.progress_bar(fh_progress, fh_bar_size);
         try buf.style_fg("#3a2e1f");
         buf.char(' ');
-        buf.tokens(fh_pct_int);
+        buf.tokens_padded(fh_pct_int, 5);
         buf.string("% ");
         try buf.style(pill0, pill1);
         buf.char('\u{e0bc}');

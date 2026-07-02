@@ -61,7 +61,8 @@ Before writing anything, tell the user in plain language:
 
 - The binary will be installed to `~/.local/bin/ccline`.
 - `~/.claude/settings.json` will be updated to set
-  `statusLine.command` to `~/.local/bin/ccline` (with `type: "command"`).
+  `statusLine.command` to the **absolute** path of that binary (with
+  `type: "command"`).
 - To uninstall later: delete `~/.local/bin/ccline` and remove the
   `statusLine` key from `~/.claude/settings.json`.
 
@@ -75,8 +76,11 @@ cp zig-out/bin/ccline ~/.local/bin/ccline
 [ -f ~/.claude/settings.json ] || printf '{}\n' > ~/.claude/settings.json
 
 # Atomic update: write to a temp file, then rename. Preserves other keys.
+# Write an ABSOLUTE path — Claude Code exec's the command without shell
+# tilde-expansion, so a literal "~/..." path fails with "No such file".
 tmp=$(mktemp)
-jq '.statusLine = {"type":"command","command":"~/.local/bin/ccline"}' \
+jq --arg p "$HOME/.local/bin/ccline" \
+  '.statusLine = {"type":"command","command":$p}' \
   ~/.claude/settings.json > "$tmp" && mv "$tmp" ~/.claude/settings.json
 ```
 
@@ -105,3 +109,8 @@ produces nothing, surface the error — do not claim success.
   dominates, so the smaller binary is the right tradeoff.
 - Claude Code picks up the new binary on the next statusline invocation;
   no restart is required.
+- The `statusLine.command` must be an **absolute path**. Claude Code exec's
+  the command directly rather than through a shell, so a literal `~` is not
+  expanded and a `~/.local/bin/ccline` value silently fails (the statusline
+  just never appears). The fresh-install `jq` step above writes
+  `$HOME/.local/bin/ccline` for this reason.

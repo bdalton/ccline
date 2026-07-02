@@ -48,9 +48,27 @@ fn status_line(io: std.Io, msg: *const message.Message) !void {
     // Line 2 post-chevron visible width:
     //   " wk " + progress_bar(wk_bar_size) + " " + tokens(sd_pct) + "% "
     //   = 27 + L_sd_pct
+    var line1_left_pad: usize = 0;
+    var line2_time_pad: usize = 1;
     var line1_right_pad: usize = 0;
     var line2_right_pad: usize = 0;
     if (msg.rate_limits) |rl| {
+        // Left-edge alignment: line 1's context bar starts at column
+        // (5 + model_len); line 2's 5h bar at (9 + time_len + time_pad).
+        // Setting them equal yields the padding. time_pad has a floor of 1
+        // (a legible gap between the thinking time and "5h"), so when the
+        // model name is short — making line 2's prefix intrinsically wider —
+        // we cannot shrink time_pad to compensate and instead pad line 1
+        // rightward. With a long model name, line1_left_pad is 0 and time_pad
+        // absorbs the difference (the original behavior). Aligning the bars
+        // this way also keeps the two middle chevrons chained, since the
+        // diagonal invariant reduces to the same equation.
+        const model_len = msg.model.display_name.len;
+        const time_str_len = buf.time_len(msg.cost.total_api_duration_ms);
+        const bar_col: usize = @max(5 + model_len, 10 + time_str_len);
+        line1_left_pad = bar_col - (5 + model_len);
+        line2_time_pad = bar_col - 9 - time_str_len;
+
         const sd_pct_for_w = if (rl.seven_day) |w| w.used_percentage else 0.0;
         const sd_pct_int_w = @as(u64, @intFromFloat(@round(math.clamp(sd_pct_for_w, 0.0, 100.0))));
         const line1_w: usize = 14 +
@@ -74,6 +92,7 @@ fn status_line(io: std.Io, msg: *const message.Message) !void {
     try buf.style("#3a2e1f", pill0);
     buf.string(msg.model.display_name);
     buf.char(' ');
+    buf.repeat(' ', line1_left_pad);
     try buf.style_fg("#c15f3c");
     try buf.progress_bar(ctx_progress, ctx_progress_size);
     try buf.style_fg("#3a2e1f");
@@ -111,18 +130,13 @@ fn status_line(io: std.Io, msg: *const message.Message) !void {
         const fh_pct_int = @as(u64, @intFromFloat(@round(math.clamp(fh_pct, 0.0, 100.0))));
         const sd_pct_int = @as(u64, @intFromFloat(@round(math.clamp(sd_pct, 0.0, 100.0))));
 
-        const model_len = msg.model.display_name.len;
-        const time_str_len = buf.time_len(msg.cost.total_api_duration_ms);
-        const padding_raw: i64 = @as(i64, @intCast(model_len)) - @as(i64, @intCast(time_str_len)) - 4;
-        const padding: usize = if (padding_raw > 1) @as(usize, @intCast(padding_raw)) else 1;
-
         buf.string("\u{00a0}\u{00a0}");
         try buf.style_fg(pill0);
         buf.string("\u{001b}[7m\u{e0b4}\u{001b}[27m");
         try buf.style("#3a2e1f", pill0);
         buf.string("   \u{e641} ");
         buf.time(msg.cost.total_api_duration_ms);
-        for (0..padding) |_| buf.char(' ');
+        buf.repeat(' ', line2_time_pad);
         buf.string("5h ");
         try buf.style_fg("#c15f3c");
         try buf.progress_bar(fh_progress, fh_bar_size);

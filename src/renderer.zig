@@ -20,9 +20,9 @@ var len: usize = 0;
 var overflow: bool = false;
 
 /// Flushes the buffer to stdout and resets state
-pub fn present() void {
+pub fn present(io: std.Io) void {
     string("\u{001b}[49m\u{001b}[39m\n");
-    _ = std.posix.write(std.posix.STDOUT_FILENO, buf[0..len]) catch {};
+    std.Io.File.stdout().writeStreamingAll(io, buf[0..len]) catch {};
     len = 0;
     overflow = false;
 }
@@ -329,7 +329,7 @@ test "present resets state" {
     len = 100;
     overflow = true;
 
-    present();
+    present(std.Io.Threaded.global_single_threaded.io());
 
     try std.testing.expectEqual(@as(usize, 0), len);
     try std.testing.expectEqual(false, overflow);

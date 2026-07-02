@@ -134,9 +134,10 @@ pub const ParsedMessage = struct {
 
 /// Read JSON from stdin and parse into a Message struct.
 /// Caller must call .deinit() on the returned ParsedMessage when done.
-pub fn parse_message_from_stdin(allocator: std.mem.Allocator) !ParsedMessage {
-    const stdin_file = std.fs.File{ .handle = std.posix.STDIN_FILENO };
-    const json_data = try stdin_file.readToEndAlloc(allocator, 32768); // 32KB max
+pub fn parse_message_from_stdin(allocator: std.mem.Allocator, io: std.Io) !ParsedMessage {
+    var read_buffer: [4096]u8 = undefined;
+    var file_reader = std.Io.File.stdin().reader(io, &read_buffer);
+    const json_data = try file_reader.interface.allocRemaining(allocator, .limited(32768)); // 32KB max
     errdefer allocator.free(json_data);
 
     const parsed = try parse_message(allocator, json_data);

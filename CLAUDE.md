@@ -10,7 +10,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 - `zig build -Doptimize=ReleaseSmall` — optimized release build (smallest binary; preferred for install)
 - `zig fmt src/` — format all source files
 
-Requires Zig >= 0.15.2. No external dependencies.
+Requires Zig >= 0.16.0. No external dependencies.
 
 ## Architecture
 

@@ -20,7 +20,7 @@ fn calculate_progress_units(percentage: f64, progress_bar_size: u32) !u32 {
     return @min(n, progress_bar_size - 1);
 }
 
-fn status_line(msg: *const message.Message) !void {
+fn status_line(io: std.Io, msg: *const message.Message) !void {
     // const POWERLINE_PILL_LEFT = '\u{e0b6}';
     // const BRAIN_EMOJI = "🧠";
     // const MONEY_EMOJI = "💰";
@@ -100,7 +100,7 @@ fn status_line(msg: *const message.Message) !void {
     buf.reset_bg();
     try buf.style_fg(pill1);
     buf.string("\u{e0b4} ");
-    buf.present();
+    buf.present(io);
 
     if (msg.rate_limits) |rl| {
         const fh_bar_size: u32 = ctx_progress_size;
@@ -142,17 +142,21 @@ fn status_line(msg: *const message.Message) !void {
         buf.reset_bg();
         try buf.style_fg(pill1);
         buf.string("\u{001b}[7m\u{e0b6}\u{001b}[27m");
-        buf.present();
+        buf.present(io);
     }
 }
 
 pub fn main() !void {
-    var gpa = std.heap.GeneralPurposeAllocator(.{}){};
+    var gpa = std.heap.DebugAllocator(.{}){};
     defer _ = gpa.deinit();
     const allocator = gpa.allocator();
 
-    var parsed_msg = try message.parse_message_from_stdin(allocator);
+    var threaded: std.Io.Threaded = .init(allocator, .{});
+    defer threaded.deinit();
+    const io = threaded.io();
+
+    var parsed_msg = try message.parse_message_from_stdin(allocator, io);
     defer parsed_msg.deinit();
 
-    try status_line(&parsed_msg.parsed.value);
+    try status_line(io, &parsed_msg.parsed.value);
 }

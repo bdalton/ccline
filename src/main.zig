@@ -188,6 +188,7 @@ pub fn main(init: std.process.Init.Minimal) !void {
     switch (theme.resolve(mode, allocator, io, init.environ)) {
         .dark => try status_line(theme.dark, io, msg),
         .light => try status_line(theme.light, io, msg),
+        .frappe => try status_line(theme.frappe, io, msg),
     }
 }
 

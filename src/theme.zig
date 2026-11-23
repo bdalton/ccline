@@ -7,6 +7,7 @@
 //!
 //!   --theme=dark   (default) the original palette, on every platform
 //!   --theme=light  the light palette, on every platform
+//!   --theme=frappe the Catppuccin Frappé palette, on every platform
 //!   --theme=auto   COLORFGBG if the terminal sets it, else the macOS system
 //!                  appearance (macOS only), else dark
 //!
@@ -52,8 +53,20 @@ pub const light: Palette = .{
     .text1 = "#73726c",
 };
 
-pub const Mode = enum { dark, light, auto };
-pub const Variant = enum { dark, light };
+/// Catppuccin Frappé (https://catppuccin.com/palette), tuned for a terminal
+/// whose background is Frappé mantle (#292c3c). The left pill is surface0, one
+/// step up from mantle, and carries the mauve accent; the right pill is base,
+/// half a step up, so it recedes like the other palettes' right pill does.
+pub const frappe: Palette = .{
+    .pill0 = "#414559", // surface0
+    .pill1 = "#303446", // base
+    .accent = "#ca9ee6", // mauve
+    .text0 = "#c6d0f5", // text
+    .text1 = "#a5adce", // subtext0
+};
+
+pub const Mode = enum { dark, light, frappe, auto };
+pub const Variant = enum { dark, light, frappe };
 
 /// Parses one command-line argument. Returns null for anything that is not a
 /// recognised `--theme=` value, so unknown input falls back to the default
@@ -109,6 +122,7 @@ pub fn resolve(mode: Mode, gpa: std.mem.Allocator, io: std.Io, environ: std.proc
     return switch (mode) {
         .dark => .dark,
         .light => .light,
+        .frappe => .frappe,
         .auto => blk: {
             if (environ.getAlloc(gpa, "COLORFGBG")) |value| {
                 defer gpa.free(value);
@@ -122,6 +136,7 @@ pub fn resolve(mode: Mode, gpa: std.mem.Allocator, io: std.Io, environ: std.proc
 test "parse_arg" {
     try std.testing.expectEqual(Mode.dark, parse_arg("--theme=dark").?);
     try std.testing.expectEqual(Mode.light, parse_arg("--theme=light").?);
+    try std.testing.expectEqual(Mode.frappe, parse_arg("--theme=frappe").?);
     try std.testing.expectEqual(Mode.auto, parse_arg("--theme=auto").?);
     try std.testing.expectEqual(@as(?Mode, null), parse_arg("--theme=sepia"));
     try std.testing.expectEqual(@as(?Mode, null), parse_arg("--theme"));

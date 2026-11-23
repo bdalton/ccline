@@ -21,10 +21,19 @@ var overflow: bool = false;
 
 /// Flushes the buffer to stdout and resets state
 pub fn present(io: std.Io) void {
+    std.Io.File.stdout().writeStreamingAll(io, take_line()) catch {};
+}
+
+/// Terminates the current line, resets state, and returns the finished line.
+/// The slice is only valid until the next append. Split from `present` so
+/// tests can exercise the reset without writing to stdout, which `zig build
+/// test` uses to talk to the test runner.
+fn take_line() []const u8 {
     string("\u{001b}[49m\u{001b}[39m\n");
-    std.Io.File.stdout().writeStreamingAll(io, buf[0..len]) catch {};
+    const line = buf[0..len];
     len = 0;
     overflow = false;
+    return line;
 }
 
 /// Appends a single Unicode codepoint (UTF-8 encoded) to the buffer
@@ -285,26 +294,28 @@ test "overflow behavior" {
     len = 0;
     overflow = false;
 
-    // Fill buffer to near capacity
-    const large_str: [500]u8 = @splat('x');
+    // Fill buffer to near capacity, sized from the buffer itself so the test
+    // keeps exercising overflow if the buffer size changes.
+    const fill = buf.len - 10;
+    const large_str: [fill]u8 = @splat('x');
     string(&large_str);
-    try std.testing.expectEqual(@as(usize, 500), len);
+    try std.testing.expectEqual(fill, len);
     try std.testing.expectEqual(false, overflow);
 
     // This should trigger overflow
     string("this will overflow");
     try std.testing.expectEqual(true, overflow);
-    try std.testing.expectEqual(@as(usize, 500), len); // len unchanged
+    try std.testing.expectEqual(fill, len); // len unchanged
 
     // Further appends should be no-ops
     string("more");
-    try std.testing.expectEqual(@as(usize, 500), len);
+    try std.testing.expectEqual(fill, len);
 
     char('x');
-    try std.testing.expectEqual(@as(usize, 500), len);
+    try std.testing.expectEqual(fill, len);
 
     repeat('y', 5);
-    try std.testing.expectEqual(@as(usize, 500), len);
+    try std.testing.expectEqual(fill, len);
 }
 
 test "repeat with ASCII character" {
@@ -329,10 +340,14 @@ test "present resets state" {
     len = 100;
     overflow = true;
 
-    present(std.Io.Threaded.global_single_threaded.io());
-
+    // Overflowed, so no terminator is appended; the 100 bytes come back as-is.
+    try std.testing.expectEqual(@as(usize, 100), take_line().len);
     try std.testing.expectEqual(@as(usize, 0), len);
     try std.testing.expectEqual(false, overflow);
+
+    string("hi");
+    try std.testing.expectEqualStrings("hi\u{001b}[49m\u{001b}[39m\n", take_line());
+    try std.testing.expectEqual(@as(usize, 0), len);
 }
 
 test "tokens formats small counts" {
@@ -460,7 +475,7 @@ test "tokens_len matches tokens emission length" {
     try std.testing.expectEqual(@as(usize, 6), tokens_len(130_000)); // "130.0K"
     try std.testing.expectEqual(@as(usize, 7), tokens_len(1_000_000)); // "1000.0K"
     try std.testing.expectEqual(@as(usize, 5), tokens_len(1_200_000)); // "1.20M"
-    try std.testing.expectEqual(@as(usize, 5), tokens_len(99_999_999)); // "100.0M"
+    try std.testing.expectEqual(@as(usize, 6), tokens_len(99_999_999)); // "100.0M"
     try std.testing.expectEqual(@as(usize, 4), tokens_len(100_000_000)); // "100M"
 }
 

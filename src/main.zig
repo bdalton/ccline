@@ -190,6 +190,10 @@ pub fn main(init: std.process.Init.Minimal) !void {
     }
 }
 
+// The test step's root is this file, so tests in imported files only run if
+// they are referenced here.
 test {
+    _ = buf;
+    _ = message;
     _ = theme;
 }

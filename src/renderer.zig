@@ -286,8 +286,8 @@ test "overflow behavior" {
     overflow = false;
 
     // Fill buffer to near capacity
-    const large_str = "x" ** 500;
-    string(large_str);
+    const large_str: [500]u8 = @splat('x');
+    string(&large_str);
     try std.testing.expectEqual(@as(usize, 500), len);
     try std.testing.expectEqual(false, overflow);
 

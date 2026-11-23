@@ -11,7 +11,7 @@ The status bar displays three segments:
 
 ## Requirements
 
-Zig 0.15.2 or later.
+Zig 0.17.1 or later.
 
 **macOS (Homebrew):**
 ```sh

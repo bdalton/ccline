@@ -6,7 +6,9 @@ build:
 test:
     zig build test
 
-# Regenerate the README screenshot (requires freeze and a Nerd Font)
+# Regenerate the README screenshot. Requires charmbracelet/tap/freeze,
+# rsvg-convert (brew install librsvg; without it freeze renders no text) and
+# SauceCodePro Nerd Font (brew install --cask font-sauce-code-pro-nerd-font).
 #
 # ccline pads the start of line 2 with U+00A0 NBSPs so Claude Code's own
 # line-2 handler doesn't strip the row (see CLAUDE.md); inside Claude Code

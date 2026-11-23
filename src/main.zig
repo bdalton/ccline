@@ -55,9 +55,10 @@ fn status_line(comptime p: theme.Palette, io: std.Io, msg: *const message.Messag
     var line2_right_pad: usize = 0;
     if (msg.rate_limits) |rl| {
         // Left-edge alignment: line 1's context bar starts at column
-        // (5 + model_len); line 2's 5h bar at (9 + time_len + time_pad).
-        // Setting them equal yields the padding. time_pad has a floor of 1
-        // (a legible gap between the thinking time and "5h"), so when the
+        // (5 + model_len); line 2's 5h bar at (11 + time_len + time_pad),
+        // where the 11 includes the "/ " separator before "5h". Setting them
+        // equal yields the padding. time_pad has a floor of 1 (a gap between
+        // the thinking time and the "/" separator), so when the
         // model name is short — making line 2's prefix intrinsically wider —
         // we cannot shrink time_pad to compensate and instead pad line 1
         // rightward. With a long model name, line1_left_pad is 0 and time_pad
@@ -66,9 +67,9 @@ fn status_line(comptime p: theme.Palette, io: std.Io, msg: *const message.Messag
         // diagonal invariant reduces to the same equation.
         const model_len = msg.model.display_name.len;
         const time_str_len = buf.time_len(msg.cost.total_api_duration_ms);
-        const bar_col: usize = @max(5 + model_len, 10 + time_str_len);
+        const bar_col: usize = @max(5 + model_len, 12 + time_str_len);
         line1_left_pad = bar_col - (5 + model_len);
-        line2_time_pad = bar_col - 9 - time_str_len;
+        line2_time_pad = bar_col - 11 - time_str_len;
 
         const sd_pct_for_w = if (rl.seven_day) |w| w.used_percentage else 0.0;
         const sd_pct_int_w = @as(u64, @intFromFloat(@round(math.clamp(sd_pct_for_w, 0.0, 100.0))));
@@ -138,7 +139,7 @@ fn status_line(comptime p: theme.Palette, io: std.Io, msg: *const message.Messag
         buf.string("   \u{e641} ");
         buf.time(msg.cost.total_api_duration_ms);
         buf.repeat(' ', line2_time_pad);
-        buf.string("5h ");
+        buf.string("/ 5h ");
         try buf.style_fg(p.accent);
         try buf.progress_bar(fh_progress, fh_bar_size);
         try buf.style_fg(p.text0);

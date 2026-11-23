@@ -23,11 +23,12 @@ Pipeline: `stdin (JSON) → message.zig (parse) → main.zig (orchestrate) → r
   - **Line 2** (only when `msg.rate_limits` is present): inverted (concave) bone pill with stopwatch, thinking time, and terracotta 5h progress bar; beige pill with 7d/weekly bar. The 5h bar's start column is padded dynamically so it sits directly beneath line 1's context bar.
 - **src/message.zig** — JSON deserialization into nested Zig structs (`Message`, `Model`, `Cost`, `ContextWindow`, `RateLimits`, etc.) using `std.json.parseFromSlice`. Reads up to 32KB from stdin.
 - **src/renderer.zig** — Zero-allocation rendering engine. Static 1024-byte buffer with overflow protection. Provides ANSI color primitives (`style`, `style_fg`, `style_bg` with compile-time hex color parsing) and formatters for tokens, time (with companion `time_len` for pre-computing width without emitting), cost, and progress bars.
+- **src/theme.zig** — Dark and light `Palette` values plus `--theme=dark|light|auto` handling. `auto` checks `COLORFGBG`, then (macOS only) `defaults read -g AppleInterfaceStyle`, then falls back to dark. `status_line` takes the palette as a `comptime` parameter so the renderer's compile-time colour parsing still applies.
 - **src/root.zig** — Library module root (placeholder, not meaningfully used yet).
 
 ### Color palette
 
-Claude-brand adjacent:
+Claude-brand adjacent. Dark palette (default, below); the light palette in `src/theme.zig` keeps the bone left pill and terracotta accent but uses `#f0eee6` for the right pill (so it recedes against an ivory `#faf9f5` background), `#141413` left text and `#73726c` right text.
 
 - `pill0 = #e8e3d6` (bone) — line 1 left pill, line 2 left pill
 - `pill1 = #b1ada1` (warm beige) — line 1 right pill, line 2 right pill

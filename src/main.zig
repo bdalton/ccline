@@ -1,6 +1,7 @@
 const std = @import("std");
 const buf = @import("renderer.zig");
 const message = @import("message.zig");
+const theme = @import("theme.zig");
 const math = std.math;
 
 fn calculate_progress_units(percentage: f64, progress_bar_size: u32) !u32 {
@@ -20,14 +21,14 @@ fn calculate_progress_units(percentage: f64, progress_bar_size: u32) !u32 {
     return @min(n, progress_bar_size - 1);
 }
 
-fn status_line(io: std.Io, msg: *const message.Message) !void {
+fn status_line(comptime p: theme.Palette, io: std.Io, msg: *const message.Message) !void {
     // const POWERLINE_PILL_LEFT = '\u{e0b6}';
     // const BRAIN_EMOJI = "🧠";
     // const MONEY_EMOJI = "💰";
     // const STOPWATCH_EMOJI = "⏱️";
 
-    const pill0 = "#e8e3d6";
-    const pill1 = "#b1ada1";
+    const pill0 = p.pill0;
+    const pill1 = p.pill1;
 
     const ctx_progress_size = 40;
     const wk_bar_size: u32 = 20;
@@ -87,21 +88,21 @@ fn status_line(io: std.Io, msg: *const message.Message) !void {
 
     try buf.style_fg(pill0);
     buf.string("\u{e0b6}");
-    try buf.style("#c15f3c", pill0);
+    try buf.style(p.accent, pill0);
     buf.string(" \u{2732} ");
-    try buf.style("#3a2e1f", pill0);
+    try buf.style(p.text0, pill0);
     buf.string(msg.model.display_name);
     buf.char(' ');
     buf.repeat(' ', line1_left_pad);
-    try buf.style_fg("#c15f3c");
+    try buf.style_fg(p.accent);
     try buf.progress_bar(ctx_progress, ctx_progress_size);
-    try buf.style_fg("#3a2e1f");
+    try buf.style_fg(p.text0);
     buf.char(' ');
     buf.tokens_padded(msg.estimate_used_tokens(), 7);
     buf.char(' ');
     try buf.style(pill0, pill1);
     buf.char('\u{e0bc}');
-    try buf.style("#000000", pill1);
+    try buf.style(p.text1, pill1);
     buf.string(" \u{e0a0} ");
     buf.string("\u{eadc} ");
     buf.tokens(msg.cost.total_lines_added);
@@ -133,20 +134,20 @@ fn status_line(io: std.Io, msg: *const message.Message) !void {
         buf.string("\u{00a0}\u{00a0}");
         try buf.style_fg(pill0);
         buf.string("\u{001b}[7m\u{e0b4}\u{001b}[27m");
-        try buf.style("#3a2e1f", pill0);
+        try buf.style(p.text0, pill0);
         buf.string("   \u{e641} ");
         buf.time(msg.cost.total_api_duration_ms);
         buf.repeat(' ', line2_time_pad);
         buf.string("5h ");
-        try buf.style_fg("#c15f3c");
+        try buf.style_fg(p.accent);
         try buf.progress_bar(fh_progress, fh_bar_size);
-        try buf.style_fg("#3a2e1f");
+        try buf.style_fg(p.text0);
         buf.char(' ');
         buf.tokens_padded(fh_pct_int, 5);
         buf.string("% ");
         try buf.style(pill0, pill1);
         buf.char('\u{e0bc}');
-        try buf.style("#000000", pill1);
+        try buf.style(p.text1, pill1);
         buf.string(" wk ");
         try buf.progress_bar(sd_progress, wk_bar_size);
         buf.char(' ');
@@ -160,7 +161,7 @@ fn status_line(io: std.Io, msg: *const message.Message) !void {
     }
 }
 
-pub fn main() !void {
+pub fn main(init: std.process.Init.Minimal) !void {
     var gpa = std.heap.DebugAllocator(.{}){};
     defer _ = gpa.deinit();
     const allocator = gpa.allocator();
@@ -169,8 +170,26 @@ pub fn main() !void {
     defer threaded.deinit();
     const io = threaded.io();
 
+    // The last recognised --theme= wins; anything else is ignored so a bad
+    // argument never stops the statusline from rendering.
+    var mode: theme.Mode = .dark;
+    var args = try init.args.iterateAllocator(allocator);
+    defer args.deinit();
+    _ = args.skip();
+    while (args.next()) |arg| {
+        if (theme.parse_arg(arg)) |m| mode = m;
+    }
+
     var parsed_msg = try message.parse_message_from_stdin(allocator, io);
     defer parsed_msg.deinit();
+    const msg = &parsed_msg.parsed.value;
 
-    try status_line(io, &parsed_msg.parsed.value);
+    switch (theme.resolve(mode, allocator, io, init.environ)) {
+        .dark => try status_line(theme.dark, io, msg),
+        .light => try status_line(theme.light, io, msg),
+    }
+}
+
+test {
+    _ = theme;
 }

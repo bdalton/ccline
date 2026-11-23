@@ -48,3 +48,17 @@ Add a `statusLine` entry to `~/.claude/settings.json` pointing to the installed 
 ```
 
 Replace the path with wherever you copied the binary.
+
+### Light and dark terminals
+
+The default palette is tuned for a dark terminal background. Pass `--theme` to change it:
+
+- `--theme=dark` (default) — the dark-background palette.
+- `--theme=light` — a palette tuned for a light background.
+- `--theme=auto` — uses `COLORFGBG` if your terminal sets it, otherwise the macOS system appearance (macOS only), otherwise dark.
+
+Claude Code tells a statusline command nothing about the terminal's colours, so `auto` relies on these hints. It is not the default because the OS appearance only reflects the terminal if the terminal follows it (as Ghostty does with `theme = light:…,dark:…`).
+
+```json
+"command": "/Users/you/.local/bin/ccline --theme=auto"
+```

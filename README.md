@@ -55,6 +55,7 @@ The default palette is tuned for a dark terminal background. Pass `--theme` to c
 
 - `--theme=dark` (default) — the dark-background palette.
 - `--theme=light` — a palette tuned for a light background.
+- `--theme=frappe` — the [Catppuccin Frappé](https://catppuccin.com/palette) palette, for terminals using that theme.
 - `--theme=auto` — uses `COLORFGBG` if your terminal sets it, otherwise the macOS system appearance (macOS only), otherwise dark.
 
 Claude Code tells a statusline command nothing about the terminal's colours, so `auto` relies on these hints. It is not the default because the OS appearance only reflects the terminal if the terminal follows it (as Ghostty does with `theme = light:…,dark:…`).
